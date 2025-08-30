@@ -1,7 +1,8 @@
 # Plant Seedlings Classification
 
-### Model Performance
+#### Model Performance
 
+- Model: ResNet50
 - Best epoch: 9
 - Train loss: 0.1476
 - Val loss: 0.2454
