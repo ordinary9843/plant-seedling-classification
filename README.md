@@ -1,7 +1,10 @@
 # Plant Seedlings Classification
 
 #### Kaggle
-[Plant Seedlings Classification](https://www.kaggle.com/competitions/plant-seedlings-classification/overview)
+- [Plant Seedlings Classification](https://www.kaggle.com/competitions/plant-seedlings-classification/overview)
+
+### Version
+- Python 3.10
 
 #### Model Performance
 
