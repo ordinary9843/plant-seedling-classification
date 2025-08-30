@@ -30,6 +30,12 @@ class Config:
     patience: int = 10
 
 
+def ensure_dir_exists(file_path: str):
+    dir = os.path.dirname(file_path)
+    if dir:
+        os.makedirs(dir, exist_ok=True)
+
+
 def get_device() -> str:
     if torch.cuda.is_available():
         return "cuda"
@@ -75,6 +81,18 @@ def get_train_data(config: Config) -> List[Dict[str, str]]:
     if not train_data:
         raise ValueError("No training images found")
     return train_data
+
+
+def get_test_data(config: Config) -> List[Dict[str, str]]:
+    test_data = []
+    if not os.path.exists(config.test_img_dir):
+        raise ValueError("Test image directory does not exist")
+    for img_file in os.listdir(config.test_img_dir):
+        if img_file.endswith((".png", ".jpg", ".jpeg")):
+            test_data.append({"image": img_file})
+    if not test_data:
+        raise ValueError("No test images found")
+    return test_data
 
 
 def train_epoch(
@@ -132,12 +150,6 @@ def validate_epoch(
     return avg_val_loss, all_preds, all_labels
 
 
-def ensure_dir_exists(file_path: str):
-    dir = os.path.dirname(file_path)
-    if dir:
-        os.makedirs(dir, exist_ok=True)
-
-
 def plot_loss_curve(config: Config, train_losses: List[float], val_losses: List[float]):
     save_path = config.loss_curve_save_path
     ensure_dir_exists(save_path)
@@ -177,12 +189,7 @@ def create_submission(
     species_to_idx: Dict[str, int],
 ):
     model.eval()
-    test_data = []
-    if not os.path.exists(config.test_img_dir):
-        raise ValueError("Test image directory does not exist")
-    for img_file in os.listdir(config.test_img_dir):
-        if img_file.endswith((".png", ".jpg", ".jpeg")):
-            test_data.append({"image": img_file})
+    test_data = get_test_data(config)
     test_df = pd.DataFrame(test_data)
     test_dataset = PlantDataset(
         dataframe=test_df,
