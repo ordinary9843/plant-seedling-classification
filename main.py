@@ -19,7 +19,7 @@ import logging
 class Config:
     img_size: Tuple[int, int] = (224, 224)
     batch_size: int = 32
-    epochs: int = 100
+    epochs: int = 50
     lr: float = 0.001
     train_img_dir: str = "./datasets/plant-seedlings-classification/train"
     test_img_dir: str = "./datasets/plant-seedlings-classification/test"
@@ -182,7 +182,7 @@ def create_submission(
         raise ValueError("Test image directory does not exist")
     for img_file in os.listdir(config.test_img_dir):
         if img_file.endswith((".png", ".jpg", ".jpeg")):
-            test_data.append({"file": img_file})
+            test_data.append({"image": img_file})
     test_df = pd.DataFrame(test_data)
     test_dataset = PlantDataset(
         dataframe=test_df,
@@ -208,7 +208,8 @@ def create_submission(
     test_df["species"] = predictions
     submission_path = config.submission_save_path
     ensure_dir_exists(submission_path)
-    test_df.to_csv(submission_path, index=False)
+    submission_df = test_df.rename(columns={"image": "file"})
+    submission_df.to_csv(submission_path, index=False)
     logging.info(f"submission file created at '{submission_path}'")
 
 
