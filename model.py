@@ -22,7 +22,8 @@ class PlantNet(nn.Module):
         return self.resnet(x)
 
     def _setup_frozen_layers(self):
-        for param in self.resnet.parameters():
-            param.requires_grad = False
-        for param in self.resnet.fc.parameters():
-            param.requires_grad = True
+        for name, param in self.resnet.named_parameters():
+            if "fc" not in name and "layer4" not in name:
+                param.requires_grad = False
+            else:
+                param.requires_grad = True

@@ -254,7 +254,12 @@ def main():
     model = PlantNet(num_classes=num_classes)
     model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=config.lr)
+    optimizer = optim.Adam(
+        [
+            {"params": model.resnet.layer4.parameters(), "lr": config.lr * 0.1},
+            {"params": model.resnet.fc.parameters(), "lr": config.lr},
+        ]
+    )
     train_losses = []
     val_losses = []
     best_val_loss = float("inf")
