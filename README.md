@@ -3,7 +3,7 @@
 #### Kaggle
 - [Plant Seedlings Classification](https://www.kaggle.com/competitions/plant-seedlings-classification/overview)
 
-### Version
+### Env
 - Python 3.10
 
 #### Model Performance
