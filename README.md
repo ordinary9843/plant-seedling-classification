@@ -21,8 +21,6 @@
 
 ![Confusion Matrix](https://github.com/ordinary9843/plant-seedling-classification/blob/master/results/confusion_matrix.png?raw=true)
 
----
-
 ### Submission Result
 
 ![Kaggle Submission Result](https://github.com/ordinary9843/plant-seedling-classification/blob/master/results/submission.png?raw=true)
