@@ -41,6 +41,7 @@ def get_device() -> str:
         return "cuda"
     elif torch.mps.is_available():
         return "mps"
+
     return "cpu"
 
 
@@ -66,6 +67,9 @@ def get_specie_names() -> List[str]:
 
 
 def get_train_data(config: Config) -> List[Dict[str, str]]:
+    if not os.path.exists(config.train_img_dir):
+        raise ValueError("Training image directory does not exist")
+
     train_data = []
     for specie_name in get_specie_names():
         species_dir = os.path.join(config.train_img_dir, specie_name)
@@ -80,18 +84,21 @@ def get_train_data(config: Config) -> List[Dict[str, str]]:
                     )
     if not train_data:
         raise ValueError("No training images found")
+
     return train_data
 
 
 def get_test_data(config: Config) -> List[Dict[str, str]]:
-    test_data = []
     if not os.path.exists(config.test_img_dir):
         raise ValueError("Test image directory does not exist")
+
+    test_data = []
     for img_file in os.listdir(config.test_img_dir):
         if img_file.endswith((".png", ".jpg", ".jpeg")):
             test_data.append({"image": img_file})
     if not test_data:
         raise ValueError("No test images found")
+
     return test_data
 
 
@@ -118,6 +125,7 @@ def train_epoch(
         optimizer.step()
         running_loss += loss.item() * inputs.size(0)
         train_loader_tqdm.set_postfix(loss=loss.item())
+
     return running_loss / len(train_loader.dataset)
 
 
@@ -147,6 +155,7 @@ def validate_epoch(
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
     avg_val_loss = running_val_loss / len(val_loader.dataset)
+
     return avg_val_loss, all_preds, all_labels
 
 
@@ -220,6 +229,37 @@ def create_submission(
     logging.info(f"submission file created at '{submission_path}'")
 
 
+def evaluate(
+    config: Config,
+    model: nn.Module,
+    device: str,
+    val_loader: DataLoader,
+    criterion: nn.Module,
+    species_names: List[str],
+    species_to_idx: Dict[str, int],
+):
+    model.load_state_dict(torch.load(config.model_save_path, map_location=device))
+    model.to(device)
+    model.eval()
+    _, all_preds, all_labels = validate_epoch(
+        model=model,
+        val_loader=val_loader,
+        criterion=criterion,
+        device=device,
+        epoch=0,
+        epochs=0,
+    )
+    plot_confusion_matrix(
+        config=config,
+        labels=all_labels,
+        preds=all_preds,
+        species_names=species_names,
+    )
+    create_submission(
+        config=config, model=model, device=device, species_to_idx=species_to_idx
+    )
+
+
 def main():
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -227,10 +267,12 @@ def main():
     config = Config()
     device = get_device()
     logging.info(f"Using device: {device}")
+
     species_to_idx = get_species()
     species_names = get_specie_names()
     num_classes = len(species_to_idx)
     logging.info(f"Number of classes: {num_classes}")
+
     train_data = get_train_data(config)
     full_df = pd.DataFrame(train_data)
     train_df, val_df = train_test_split(
@@ -272,6 +314,7 @@ def main():
     best_val_loss = float("inf")
     patience_counter = 0
     logging.info("Starting training")
+
     for epoch in range(config.epochs):
         epoch_train_loss = train_epoch(
             model=model,
@@ -283,7 +326,7 @@ def main():
             epochs=config.epochs,
         )
         train_losses.append(epoch_train_loss)
-        epoch_val_loss, all_preds, all_labels = validate_epoch(
+        epoch_val_loss, _, _ = validate_epoch(
             model=model,
             val_loader=val_loader,
             criterion=criterion,
@@ -295,6 +338,7 @@ def main():
         logging.info(
             f"Epoch {epoch+1}/{config.epochs}, Training Loss: {epoch_train_loss:.4f}, Validation Loss: {epoch_val_loss:.4f}"
         )
+
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss
             patience_counter = 0
@@ -305,18 +349,20 @@ def main():
             logging.info(
                 f"Validation loss did not improve, patience: {patience_counter}/{config.patience}"
             )
+
         if patience_counter >= config.patience:
             logging.info("Early stopping triggered.")
             break
+
     plot_loss_curve(config=config, train_losses=train_losses, val_losses=val_losses)
-    plot_confusion_matrix(
+    evaluate(
         config=config,
-        labels=all_labels,
-        preds=all_preds,
+        model=model,
+        device=device,
+        val_loader=val_loader,
+        criterion=criterion,
         species_names=species_names,
-    )
-    create_submission(
-        config=config, model=model, device=device, species_to_idx=species_to_idx
+        species_to_idx=species_to_idx,
     )
     logging.info("Training completed")
 
